@@ -1,0 +1,25 @@
+{
+    "name": "ml-expansion/plugin-esl-yolo",
+    "type": "library",
+    "description": "Plugin for ESL Yolo cups",
+    "keywords": ["maniaplanet", "trackmania", "esl", "yolo"],
+    "homepage": "http://www.ml-expansion.com/",
+    "license": "LGPL-3.0",
+    "authors": [
+        {
+            "name": "Reaby",
+            "email": "petri.jarvisalo@gmail.com"
+        }
+    ],
+    "support": {
+        "forum": "https://github.com/eXpansionPluginPack/eXpansion"
+    },
+    "require": {
+        "ml-expansion/expansion": "dev-dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "ManiaLivePlugins\\ESL\\YOLOcup\\": "."
+        }
+    }
+}
