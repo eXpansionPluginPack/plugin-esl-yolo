@@ -24,7 +24,7 @@ class CupInfo extends \ManiaLivePlugins\eXpansion\Gui\Widgets\PlainWidget
         $label->setTextSize(2);
         $label->setTextEmboss();
         $label->setStyle('TextRaceMessageBig');
-        $label->setText('$fffESL: YOLO cup');
+        $label->setText('$fffYOLO cup');
         $label->setAlign("center", "top");
         $this->frame->addComponent($label);
 

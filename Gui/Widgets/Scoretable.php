@@ -51,7 +51,7 @@ class Scoretable extends \ManiaLivePlugins\eXpansion\Gui\Windows\PlainWindow
         $this->gamemode = new \ManiaLib\Gui\Elements\Label(30, 6);
         $this->gamemode->setTextColor("fff");
         $this->gamemode->setTextSize(1);
-        $this->gamemode->setText('$sGame Mode: ESL cup');
+        $this->gamemode->setText('$sGame Mode: YOLO cup');
         $this->gamemode->setPosition($this->sizeX / 2, -$this->sizeY - 4);
         $this->gamemode->setAlign("center");
         $this->addComponent($this->gamemode);
