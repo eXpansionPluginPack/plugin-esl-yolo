@@ -47,6 +47,8 @@ class CupScoreTableItem extends \ManiaLivePlugins\eXpansion\Gui\Control
 
         $this->addComponent($this->bg);
 
+
+
         $this->rank = new \ManiaLib\Gui\Elements\Label(10, 5);
         $this->rank->setText($index+1);
         $this->rank->setTextColor("fff");

@@ -32,7 +32,7 @@ class CupInfo extends \ManiaLivePlugins\eXpansion\Gui\Widgets\PlainWidget
         $this->status->setTextSize(3);
         $this->status->setStyle('TextRaceMessageBig');
         $this->status->setTextEmboss();
-        $this->status->setText('$f90Practise');
+        $this->status->setText('$f90Practice');
         $this->status->setAlign("center", "top");
         $this->frame->addComponent($this->status);
     }

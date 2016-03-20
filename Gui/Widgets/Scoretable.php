@@ -14,7 +14,7 @@ class Scoretable extends \ManiaLivePlugins\eXpansion\Gui\Windows\PlainWindow
     protected $page        = 0;
     protected $itemsOnPage = 16;
 
-    /** @var \ManiaLivePlugins\ESL\YOLOcup\Structures\CupScore[] */
+    /** @var ManiaLivePlugins\ESL\YOLOcup\Structures\CupScore[] */
     protected $scores = array();
     protected $actionNext;
     protected $actionPrev;

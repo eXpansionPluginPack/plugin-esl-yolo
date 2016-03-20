@@ -1,28 +1,25 @@
 <?php
 
 namespace ManiaLivePlugins\ESL\YOLOcup\Structures;
-use Maniaplanet\DedicatedServer\Structures\AbstractStructure;
 
 /**
  * Description of CupScore
  *
  * @author Reaby
  */
-class CupScore extends AbstractStructure
+class CupScore extends \Maniaplanet\DedicatedServer\Structures\AbstractStructure
 {
-    /** @var string Player information */
+    /** @var string */
     public $login, $nickName;
 
-    /** @var integer Current position */
+    /** @var integer */
     public $place = -1;
 
-    /** @var boolean Check if the current player is playing */
+    /** @var boolean */
     public $isPlaying = true;
 
-    /** @var bool Is the player connected to the server */
     public $isConnected = true;
-
-    /** @var int Current score */
+    
     public $scores = -1;
     
     public function __construct(\ManiaLive\Data\Player $player)
