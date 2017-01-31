@@ -50,14 +50,27 @@ class YOLOcup extends ExpPlugin
     private $mapTopScores = array();
 
     /** @var boolean */
-    private $wasWarmup       = false;
+    private $wasWarmup = false;
+
+    /** @var string */
     private $scoretableLayer = "scorestable";
-    private $justStarted     = true;
+
+    /** @var bool is the cup just started ? */
+    private $justStarted = true;
+
+    /** @var CupScore[] $top4Players */
+    private $top4Players = array();
+
+    private $roundInMap = -1;
+
+    /** @var bool */
+    private $endYOLOcup = false;
+
 
     /**
      * onReady
      */
-    public function exp_onReady()
+    public function eXpOnReady()
     {
         $this->registerChatCommand("t", "nextPhase", 0, false, AdminGroups::get());
         $this->registerChatCommand("d", "disconnect", 1, true, AdminGroups::get());
@@ -66,7 +79,7 @@ class YOLOcup extends ExpPlugin
 //$this->registerChatCommand("specrel", "releaseSpec", 0, false);
 
         $admingroup = AdminGroups::getInstance();
-        $cmd        = AdminGroups::addAdminCommand('game yolo', $this, 'chat_yolocup', 'game_settings');
+        $cmd = AdminGroups::addAdminCommand('game yolo', $this, 'chat_yolocup', 'game_settings');
         $admingroup->addShortAlias($cmd, 'yolo');
 
         $this->enableDedicatedEvents();
@@ -93,12 +106,12 @@ class YOLOcup extends ExpPlugin
         }
 
         for ($x = 0; $x < $number; $x++) {
-            $player                                = $players[mt_rand(0, (count($players) - 1))];
-            $login                                 = $player->login;
+            $player = $players[mt_rand(0, (count($players) - 1))];
+            $login = $player->login;
             $this->cupPlayers[$login]->isConnected = false;
-            $this->cupPlayers[$login]->isPlaying   = false;
+            $this->cupPlayers[$login]->isPlaying = false;
             $this->connection->forceSpectator($login, 1);
-            echo "disconnecting :".$login."\n";
+            echo "disconnecting :" . $login . "\n";
         }
 
         $this->Scoretable();
@@ -112,10 +125,10 @@ class YOLOcup extends ExpPlugin
             switch (strtolower($command)) {
                 case "prac":
                 case "practice":
+                    $this->reset();
                     $this->connection->setGameMode(GameInfos::GAMEMODE_TIMEATTACK);
                     $this->connection->setTimeAttackLimit(5 * 60 * 1000);
-                    $this->practiceMode    = true;
-                    $this->enabled         = false;
+                    $this->practiceMode = true;
                     $this->showUI();
                     $this->connection->nextMap(false);
                     break;
@@ -123,52 +136,52 @@ class YOLOcup extends ExpPlugin
                     $this->releaseSpec();
                     break;
                 case "start":
-                    $this->practiceMode    = false;
-                    $this->enabled         = true;
-                    $this->startingMapUid  = $this->storage->nextMap->uId;
-                    $this->roundNumber     = -1;
-                    $this->mapNumber       = -1;
-                    $this->phaseNumber     = -1;
-                    $this->justStarted     = true;
-                    $this->mapTopScores    = array();
-                    $this->cupPlayers      = array();
-                    $this->roundFinish     = array();
-                    $this->lastRoundWinner = "";
+                    $this->reset();
+                    $this->enabled = true;
+                    $this->justStarted = true;
+                    $this->startingMapUid = $this->storage->nextMap->uId;
                     $this->connection->setGameMode(GameInfos::GAMEMODE_CUP);
                     $this->connection->setCupPointsLimit(1000);
-                    $this->enableDedicatedEvents();
                     $this->hideUI();
                     $this->releaseSpec();
                     $this->registerPlayers();
-                    $this->connection->nextMap(false);
+                    $this->connection->nextMap();
                     break;
                 case "stop":
-                    $this->practiceMode    = false;
-                    $this->enabled         = false;
-                    $this->roundNumber     = -1;
-                    $this->mapNumber       = -1;
-                    $this->phaseNumber     = -1;
-                    $this->justStarted     = false;
-                    $this->startingMapUid  = "";
-                    $this->mapTopScores    = array();
-                    $this->cupPlayers      = array();
-                    $this->roundFinish     = array();
-                    $this->lastRoundWinner = "";
-                    $this->disableDedicatedEvents();
+                    $this->reset();
                     Scoretable::EraseAll();
                     CupInfo::EraseAll();
                     $this->showUI();
                     $this->releaseSpec();
                     $this->connection->setCupPointsLimit(100);
-                    $this->exp_chatSendServerMessage("YOLOcup disabled - cup point limit set to 100");
+                    $this->eXpChatSendServerMessage("YOLOcup disabled - cup point limit set to 100");
                     break;
                 default:
-                    $this->exp_chatSendServerMessage("command not found", $fromLogin);
+                    $this->eXpChatSendServerMessage("command not found", $fromLogin);
                     break;
             }
         } catch (Exception $e) {
-            
+
         }
+    }
+
+
+    private function reset()
+    {
+        $this->roundInMap = -1;
+        $this->practiceMode = false;
+        $this->enabled = false;
+        $this->roundNumber = -1;
+        $this->mapNumber = -1;
+        $this->phaseNumber = -1;
+        $this->justStarted = false;
+        $this->startingMapUid = "";
+        $this->mapTopScores = array();
+        $this->cupPlayers = array();
+        $this->roundFinish = array();
+        $this->top4Players = array();
+        $this->lastRoundWinner = "";
+        $this->endYOLOcup = false;
     }
 
     public function onPlayerConnect($login, $isSpec)
@@ -184,8 +197,8 @@ class YOLOcup extends ExpPlugin
         /* create cupscore objects and update player status */
         $player = $this->storage->getPlayerObject($login);
         if (!array_key_exists($player->login, $this->cupPlayers)) {
-            $this->cupPlayers[$player->login]              = new CupScore($player);
-            $this->cupPlayers[$player->login]->isPlaying   = false;
+            $this->cupPlayers[$player->login] = new CupScore($player);
+            $this->cupPlayers[$player->login]->isPlaying = false;
             $this->cupPlayers[$player->login]->isConnected = true;
         } else {
             $this->cupPlayers[$player->login]->isConnected = true;
@@ -200,7 +213,7 @@ class YOLOcup extends ExpPlugin
 
     /**
      * contains checks made for practice mode
-     * 
+     *
      * @return null
      */
     public function checkPractise()
@@ -216,10 +229,10 @@ class YOLOcup extends ExpPlugin
             }
 // if author has made the current map, force to specate
             if ($this->storage->currentMap->author == $login) {
-                $this->exp_chatSendServerMessage("[YOLOcup notice] You are not allowed to practice, since you're the author of this map!",
+                $this->eXpChatSendServerMessage("[YOLOcup notice] You are not allowed to practice, since you're the author of this map!",
                     $login);
-                $msg = "[YOLOcup notice]Player ".$player->nickName.'$z$s is forced to spec since rule: author of the map on practice mode is not allowed to play!';
-                $ag  = AdminGroups::getInstance();
+                $msg = "[YOLOcup notice]Player " . $player->nickName . '$z$s is forced to spec since rule: author of the map on practice mode is not allowed to play!';
+                $ag = AdminGroups::getInstance();
                 $ag->announceToPermission("yolo_admin", $msg);
                 $this->connection->forceSpectator($login, 1);
             }
@@ -230,12 +243,12 @@ class YOLOcup extends ExpPlugin
     {
         $this->cupPlayers = Array();
         foreach ($this->storage->players as $login => $player) {
-            $this->cupPlayers[$login]            = new CupScore($player);
+            $this->cupPlayers[$login] = new CupScore($player);
             $this->cupPlayers[$login]->isPlaying = true;
         }
 
         foreach ($this->storage->spectators as $login => $player) {
-            $this->cupPlayers[$login]            = new CupScore($player);
+            $this->cupPlayers[$login] = new CupScore($player);
             $this->cupPlayers[$login]->isPlaying = true;
         }
     }
@@ -262,53 +275,68 @@ class YOLOcup extends ExpPlugin
      */
     public function onPlayerFinish($playerUid, $login, $timeOrScore)
     {
-        if ($this->enabled == FALSE || $this->practiceMode == TRUE) return;
+        if ($this->enabled == false || $this->practiceMode == true) return;
         if ($timeOrScore == 0) return;
 
-        $player              = new Player();
-        $player->playerId    = $playerUid;
-        $player->login       = $login;
-        $player->rank        = count($this->roundFinish) + 1;
-        $player->score       = $timeOrScore;
+        $player = new Player();
+        $player->playerId = $playerUid;
+        $player->login = $login;
+        $player->rank = count($this->roundFinish) + 1;
+        $player->score = $timeOrScore;
         $this->roundFinish[] = $player;
     }
 
     public function showStatusWidget()
     {
         $info = CupInfo::Create(null);
+
         if ($this->practiceMode == true) {
             $this->checkPractise();
             $info->show();
             return;
-        } elseif ($this->connection->getWarmUp()) {
+        }
+
+        if ($this->enabled == false) return;
+
+        if ($this->connection->getWarmUp()) {
             $info->setText('$f90Warmup');
         } else {
-            $info->setText('$0f0LIVE - ro'.$this->calcRo()." m".($this->mapNumber + 1)." r".($this->roundNumber + 1 ));
+            $info->setText('$0f0LIVE - ro' . $this->calcRo() . " m" . ($this->mapNumber + 1) . " r" . ($this->roundNumber + 1));
         }
-        if ($this->enabled == false) return;
+
+        $this->debug("ro:" . $this->calcRo() . " remaining: " . $this->calcRemaining() . " mapNumber:" . $this->mapNumber . " roundNumber: " . $this->roundNumber . " RoundInap:" . $this->roundInMap);
+        $rounds = $this->connection->getCupRoundsPerMap();
+        $dur = $this->connection->getCupWarmUpDuration();
+
+        $this->debug("roundsPerMap:" . $rounds['CurrentValue'] . " warmup:" . $dur['CurrentValue']);
+
 
         $info->show();
     }
 
     public function onBeginMatch()
     {
-        parent::onBeginMatch();
         $this->showStatusWidget();
+
     }
 
     public function onBeginRound()
     {
         $this->wasWarmup = $this->connection->getWarmUp();
 
-        $this->roundNumber++;
-        $this->showStatusWidget();
-        if ($this->enabled == false) return;
-        $this->roundFinish = array();
+        if ($this->enabled == true || $this->practiceMode == true) {
+            if ($this->wasWarmup == false) {
+                $this->roundNumber++;
+                $this->roundInMap++;
+            }
 
-        $this->scoretableLayer = "scorestable";
-        $this->scoreTable();
+            $this->showStatusWidget();
+            $this->roundFinish = array();
+            $this->scoretableLayer = "scorestable";
+            $this->scoreTable();
+        }
     }
-   
+
     /**
      *
      * @return null
@@ -319,6 +347,7 @@ class YOLOcup extends ExpPlugin
         if ($this->wasWarmup) return;
         if ($this->enabled == false) return;
         if ($this->justStarted) return;
+
         $alreadySet = array();
 
         // set new personal best for map
@@ -339,7 +368,8 @@ class YOLOcup extends ExpPlugin
         foreach ($this->cupPlayers as $login => $player) {
             if ($player->isPlaying) {
                 if (!in_array($login, $alreadySet)) {
-                    $config                                               = Config::getInstance();
+                    /** @var Config $config */
+                    $config = Config::getInstance();
                     $this->mapTopScores[$player->login][$this->mapNumber] = ($this->storage->currentMap->authorTime * $config->atMultiplier);
                 }
             }
@@ -347,40 +377,106 @@ class YOLOcup extends ExpPlugin
 
         $this->scoretableLayer = "normal";
         $this->scoreTable();
+
+
+// if ro == 4
+        if ($this->calcRo() == 4) {
+            if (array_key_exists($this->roundInMap + 1, $this->top4Players)) {
+                $playerInTurn = $this->top4Players[$this->roundInMap + 1];
+                echo "player:" . $playerInTurn . " index:" . ($this->roundInMap + 1) . "\n";
+                $this->setPlayerToDrive($playerInTurn);
+            }
+
+            if ($this->roundNumber >= 3) {
+                if ($this->storage->nextMap->uId == $this->startingMapUid) {
+                    $this->endYOLOcup = true;
+                }
+                $this->connection->nextMap();
+            }
+        }
     }
+
+
+    public function setPlayerToDrive($playingLogin)
+    {
+        print_r($this->top4Players);
+
+        foreach ($this->top4Players as $idx => $login) {
+            if ($login != $playingLogin) {
+                $this->connection->forceSpectator($login, 1, true);
+            }
+        }
+
+        $this->connection->executeMulticall();
+
+        echo "set player:" . $playingLogin . " to play\n";
+        $this->connection->forceSpectator($playingLogin, 2);
+        $this->connection->forceSpectator($playingLogin, 0);
+    }
+
 
     /** at podium */
     public function onEndMatch($rankings, $winnerTeamOrMap)
     {
-        $this->roundNumber = -1;
-
         CupInfo::EraseAll();
         if ($this->practiceMode == true) return;
         if ($this->enabled == false) return;
         if ($this->wasWarmup) return;
 
+        $ro = $this->calcRo();
+
+        switch ($this->calcRo()) {
+            case 32:
+                $this->connection->setCupRoundsPerMap(2);
+                $this->connection->setCupWarmUpDuration(1);
+                break;
+            case 16:
+                $this->connection->setCupRoundsPerMap(2);
+                $this->connection->setCupWarmUpDuration(0);
+                break;
+            case 8:
+                $this->connection->setCupRoundsPerMap(1);
+                $this->connection->setCupWarmUpDuration(0);
+                break;
+            case 4:
+                $this->connection->setCupRoundsPerMap(8);
+                $this->connection->setCupWarmUpDuration(0);
+                break;
+        }
+
+        if ($this->justStarted == true) return;
 
         // check if next phase starts
         if ($this->storage->nextMap->uId == $this->startingMapUid) {
 
             $this->phaseNumber++;
-            $this->mapNumber   = -1;
+            $this->mapNumber = -1;
             $this->roundNumber = -1;
-            if ($this->phaseNumber <= 0) {
+
+            if ($this->phaseNumber < 0) {
                 $this->scoretableLayer = "normal";
                 $this->scoreTable();
                 return;
             }
 
-            $this->exp_chatSendServerMessage("[YOLOcup] End of ro ".$this->calcRo());
-            $this->nextPhase();
+            // if ro greater than 4
+            if ($ro > 4) {
+                $this->eXpChatSendServerMessage("[YOLOcup] End of ro " . $ro);
+                $this->nextPhase();
+                $this->scoretableLayer = "normal";
+                $this->scoreTable();
+            }
+
+            if ($ro == 4 && $this->endYOLOcup == true) {
+                $this->eXpChatSendServerMessage("YoloCup ends. Thanks for participating.");
+                $this->reset();
+            }
         }
 
-        $this->scoretableLayer = "normal";
-        $this->scoreTable();
     }
 
-    public function calcRo()
+
+    public function calcRemaining()
     {
         $playerRemaining = 0;
         foreach ($this->cupPlayers as $login => $player) {
@@ -388,6 +484,12 @@ class YOLOcup extends ExpPlugin
                 $playerRemaining++;
             }
         }
+        return $playerRemaining;
+    }
+
+    public function calcRo()
+    {
+        $playerRemaining = $this->calcRemaining();
 
         if ($playerRemaining > 16) {
             return 32;
@@ -399,18 +501,12 @@ class YOLOcup extends ExpPlugin
             return 4;
         }
 
-        return 2;
     }
 
     public function nextPhase()
     {
-        $playerRemaining = 0;
-        foreach ($this->cupPlayers as $login => $player) {
-            if ($player->isPlaying == true) {
-                $playerRemaining++;
-            }
-        }
-        $this->d("remaining: ".$playerRemaining);
+        $playerRemaining = $this->calcRemaining();
+        $this->d("remaining: " . $playerRemaining, "process:" . $this->calcRo());
 
         if ($playerRemaining > 32) {
             $this->processPhase(32);
@@ -420,15 +516,30 @@ class YOLOcup extends ExpPlugin
             $this->processPhase(8);
         } elseif ($playerRemaining > 4 && $playerRemaining <= 8) {
             $this->processPhase(4);
-        } else {
-            // do nothing
+            $this->connection->setCupRoundsPerMap(8);
+            $this->connection->setCupWarmUpDuration(0);
+
+            $this->updateScores();
+            foreach ($this->cupPlayers as $login => $player) {
+                if ($player->isPlaying) {
+                    // top4Players is now in order top 4
+                    $this->top4Players[] = $login;
+                }
+            }
+
+            if (count($this->top4Players) > 4) {
+                $this->eXpChatSendServerMessage("[YOLOcup] Whops, more than 4 players at ro4.. reducing number to top 4");
+                array_slice($this->top4Players, 0, 4, true);
+            }
+            // top4Players is now reversed order.. ready to cycle though rounds.
+            $this->top4Players = array_reverse($this->top4Players);
         }
     }
 
     public function processPhase($howManyToKeep)
     {
 
-        $this->d("Keeping top ".$howManyToKeep." players!", __FUNCTION__);
+        $this->d("Keeping top " . $howManyToKeep . " players!", __FUNCTION__);
 
         $index = 0;
 
@@ -443,39 +554,47 @@ class YOLOcup extends ExpPlugin
                 $this->connection->forceSpectator($login, 1);
             }
         }
+
         $this->mapTopScores = array();
-        
+
         $this->Scoretable();
     }
 
     public function onEndMap($rankings, $map, $wasWarmUp, $matchContinuesOnNextMap, $restartMap)
     {
         if ($this->practiceMode == true) return;
-        if ($this->enabled == false || $wasWarmUp == true) return;
+        if ($this->enabled == false) return;
         if ($this->justStarted == true) {
             $this->justStarted = false;
+            return;
         }
-        
-        $this->exp_chatSendServerMessage(exp_getMessage('YOLOcup: $0d0 LIVE - END of map #variable#%s'),null, array($this->mapNumber));
-        // increase mapindex
-        $this->mapNumber++;
+
+        $this->eXpChatSendServerMessage(eXpGetMessage('YOLOcup: $0d0 LIVE - END of map #variable#%s'), null, array($this->mapNumber));
 
         $this->scoretableLayer = "scorestable";
-
         $this->scoreTable();
     }
 
     public function onBeginMap($map, $warmUp, $matchContinuation)
     {
-        if ($this->practiceMode == TRUE)  {            
+        if ($this->practiceMode == TRUE) {
             return;
         }
         if ($this->enabled == FALSE) return;
+
         // if no starting map... set one
         if (empty($this->startingMapUid)) $this->startingMapUid = $this->storage->currentMap->uId;
         if ($warmUp) return;
 
-        $this->exp_chatSendServerMessage(exp_getMessage('YOLOcup: $0d0 LIVE - RO %s Starting round %s'),null, array($this->calcRo(), $this->roundNumber));
+        $this->roundInMap = -1;
+        $this->mapNumber++;
+
+        $this->eXpChatSendServerMessage(eXpGetMessage('YOLOcup: $0d0 LIVE - RO %s Starting round %s'), null, array($this->calcRo(), ($this->roundNumber + 1)));
+
+        if ($this->calcRo() == 4) {
+            $this->setPlayerToDrive($this->top4Players[0]);
+        }
+
         $this->scoreTable();
     }
 
@@ -501,13 +620,8 @@ class YOLOcup extends ExpPlugin
         CustomUI::ShowForAll(CustomUI::ROUND_SCORES);
     }
 
-    public function Scoretable()
+    public function updateScores()
     {
-        Scoretable::EraseAll();
-
-        if ($this->enabled == false) return;
-
-
         foreach ($this->mapTopScores as $login => $score) {
             if (array_key_exists($login, $this->cupPlayers)) {
                 if ($this->cupPlayers[$login]->isPlaying) {
@@ -516,10 +630,19 @@ class YOLOcup extends ExpPlugin
             }
         }
 
-        $win = Scoretable::Create(null);
-
         ArrayOfObj::asortAsc($this->cupPlayers, "scores");
+    }
 
+
+    public function Scoretable()
+    {
+        Scoretable::EraseAll();
+
+        if ($this->enabled == false) return;
+
+        $this->updateScores();
+
+        $win = Scoretable::Create(null);
         $win->setData($this->cupPlayers);
         $win->setLayer($this->scoretableLayer);
         $win->setPosZ(180);
@@ -527,19 +650,19 @@ class YOLOcup extends ExpPlugin
         $win->show();
     }
 
-    public function exp_onUnload()
+    public function eXpOnUnload()
     {
         $this->showUI();
         $this->connection->setCupPointsLimit(100);
         AdminGroups::removeShortAllias("yolo");
 
-        $ag                    = AdminGroups::getInstance();
+        $ag = AdminGroups::getInstance();
         $ag->unregisterChatCommand("game yolocup");
-        $this->enabled         = false;
-        $this->winners         = array();
-        $this->roundFinish     = array();
+        $this->reset();
+        $this->enabled = false;
+        $this->winners = array();
+        $this->roundFinish = array();
         $this->lastRoundWinner = "";
-        $this->resetData       = false;
         Scoretable::EraseAll();
         CupInfo::EraseAll();
         $this->disableDedicatedEvents();
@@ -549,7 +672,7 @@ class YOLOcup extends ExpPlugin
     {
         if (is_string($msg)) {
             $ag = AdminGroups::getInstance();
-            $ag->announceToPermission(\ManiaLivePlugins\eXpansion\AdminGroups\Permission::chat_adminChannel, "[".$func."]".$msg);
+            $ag->announceToPermission(\ManiaLivePlugins\eXpansion\AdminGroups\Permission::CHAT_ADMINCHAT, "[" . $func . "]" . $msg);
         }
         $this->debug($msg);
     }
