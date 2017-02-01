@@ -14,7 +14,7 @@ class Scoretable extends \ManiaLivePlugins\eXpansion\Gui\Windows\PlainWindow
     protected $page        = 0;
     protected $itemsOnPage = 16;
 
-    /** @var ManiaLivePlugins\ESL\YOLOcup\Structures\CupScore[] */
+    /** @var \ManiaLivePlugins\ESL\YOLOcup\Structures\CupScore[] */
     protected $scores = array();
     protected $actionNext;
     protected $actionPrev;
@@ -99,7 +99,7 @@ class Scoretable extends \ManiaLivePlugins\eXpansion\Gui\Windows\PlainWindow
     protected function onDraw()
     {
         parent::onDraw();
-         
+
         $this->frame->destroyComponents();
 
         $this->next->setHidden(false);
@@ -122,14 +122,14 @@ class Scoretable extends \ManiaLivePlugins\eXpansion\Gui\Windows\PlainWindow
         $x = 0;
         // first iterate for players who are actually driving
         foreach ($this->scores as $scoreitem) {
-            if ($scoreitem->isPlaying && $scoreitem->scores > 0) {              
+            if ($scoreitem->isPlaying && $scoreitem->scores > 0) {
                 $items[] = new \ManiaLivePlugins\ESL\YOLOcup\Gui\Controls\CupScoreTableItem($x, $scoreitem, -1);
                 $x++;
             }
         }
 
         foreach ($this->scores as $scoreitem) {
-            if ($scoreitem->isPlaying && $scoreitem->scores <= 0) {              
+            if ($scoreitem->isPlaying && $scoreitem->scores <= 0) {
                 $items[] = new \ManiaLivePlugins\ESL\YOLOcup\Gui\Controls\CupScoreTableItem($x, $scoreitem, -1);
                 $x++;
            }
@@ -137,7 +137,7 @@ class Scoretable extends \ManiaLivePlugins\eXpansion\Gui\Windows\PlainWindow
 
         // add non-playing players bottom
         foreach ($this->scores as $scoreitem) {
-            if ($scoreitem->isPlaying == false) {              
+            if ($scoreitem->isPlaying == false) {
                 $items[] = new \ManiaLivePlugins\ESL\YOLOcup\Gui\Controls\CupScoreTableItem($x, $scoreitem, -1);
                 $x++;
             }
@@ -152,7 +152,7 @@ class Scoretable extends \ManiaLivePlugins\eXpansion\Gui\Windows\PlainWindow
             }
             $x++;
         }
-       
+
     }
 
     public function setData($scores)
